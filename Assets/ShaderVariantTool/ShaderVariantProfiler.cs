@@ -20,7 +20,6 @@ public class ShaderVariantProfiler : MonoBehaviour
     private struct RecorderData
     {
         public Recorder Recorder;
-        public int Denominator;
         public int Count;
         public long Time;
         public string Text;
@@ -38,13 +37,9 @@ public class ShaderVariantProfiler : MonoBehaviour
             var recorder = Recorder.Get(mNames[i]);
             recorder.enabled = true;
             mRecorders[i] = new RecorderData { Recorder = recorder };
-        }
 
-        mRecorders[0].Denominator = 1;
-        mRecorders[1].Denominator = 2;
-
-        for (int i = 0; i < mRecorders.Length; ++i)
             UpdateText(i);
+        }
 
         if (ClearWhenSceneUnloaded)
             SceneManager.sceneUnloaded += OnSceneUnloaded;
@@ -80,7 +75,7 @@ public class ShaderVariantProfiler : MonoBehaviour
 
     private void UpdateText(int index)
     {
-        int count = mRecorders[index].Count / mRecorders[index].Denominator;
+        int count = mRecorders[index].Count;
         double milliseconds = mRecorders[index].Time * 0.000001;
         string text = string.Format("{0}: {1}, {2:0.0}ms", mNames[index], count, milliseconds);
         mRecorders[index].Text = text;
