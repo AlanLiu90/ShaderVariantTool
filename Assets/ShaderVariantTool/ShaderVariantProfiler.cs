@@ -26,7 +26,7 @@ public class ShaderVariantProfiler : MonoBehaviour
     }
 
     private RecorderData[] mRecorders;
-    private GUIStyle labelStyle;
+    private GUIStyle mLabelStyle;
 
     private void OnEnable()
     {
@@ -53,7 +53,7 @@ public class ShaderVariantProfiler : MonoBehaviour
         }
 
         mRecorders = null;
-        labelStyle = null;
+        mLabelStyle = null;
 
         SceneManager.sceneUnloaded -= OnSceneUnloaded;
     }
@@ -83,17 +83,17 @@ public class ShaderVariantProfiler : MonoBehaviour
 
     private void OnGUI()
     {
-        if (labelStyle == null)
+        if (mLabelStyle == null)
         {
-            labelStyle = new GUIStyle(GUI.skin.label);
-            labelStyle.normal.textColor = FontColor;
-            labelStyle.fontSize = FontSize;
+            mLabelStyle = new GUIStyle(GUI.skin.label);
+            mLabelStyle.normal.textColor = FontColor;
+            mLabelStyle.fontSize = FontSize;
         }
 
         var rect = new Rect(0, 0, 500, LabelHeight);
         foreach (RecorderData data in mRecorders)
         {
-            GUI.Label(rect, data.Text, labelStyle);
+            GUI.Label(rect, data.Text, mLabelStyle);
             rect.y += LabelHeight;
         }
     }
