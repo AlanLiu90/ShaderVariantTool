@@ -27,23 +27,18 @@ public class ShaderVariantManager
         mKeys.Add(key);
     }
 
+    public void ClearKeys()
+    {
+        mKeys.Clear();
+    }
+
     public void WarmUp()
     {
         float time = Time.realtimeSinceStartup;
 
-        var svc = CreateShaderVariantCollection(mKeys);
-        svc.WarmUp();
-
-        mKeys.Clear();
-
-        Debug.LogFormat("WarmUp cost {0:0.0} ms", (Time.realtimeSinceStartup - time) * 1000);
-    }
-
-    protected virtual ShaderVariantCollection CreateShaderVariantCollection(HashSet<string> keySet)
-    {
         var shaderVariantIdSet = new HashSet<int>();
 
-        foreach (string key in keySet)
+        foreach (string key in mKeys)
         {
             ShaderVariantConfig.Item item;
             if (!mItemTable.TryGetValue(key, out item))
@@ -56,6 +51,30 @@ public class ShaderVariantManager
         var shaderVariantIds = shaderVariantIdSet.ToArray();
         Array.Sort(shaderVariantIds);
 
+        var svc = CreateShaderVariantCollection(mConfig, shaderVariantIds);
+        svc.WarmUp();
+
+        mKeys.Clear();
+
+        Debug.LogFormat("ShaderVariantCollection.WarmUp cost {0:0.0} ms", (Time.realtimeSinceStartup - time) * 1000);
+    }
+
+    public void WarmUp(ShaderVariantConfig cfg)
+    {
+        float time = Time.realtimeSinceStartup;
+
+        var ids = new int[cfg.ShaderVariants.Select(x => x.Variants.Length).Sum()];
+        for (int i = 0; i < ids.Length; ++i)
+            ids[i] = i;
+
+        var svc = CreateShaderVariantCollection(cfg, ids);
+        svc.WarmUp();
+
+        Debug.LogFormat("ShaderVariantCollection.WarmUp({0}) cost {1:0.0} ms", cfg.name, (Time.realtimeSinceStartup - time) * 1000);
+    }
+
+    protected virtual ShaderVariantCollection CreateShaderVariantCollection(ShaderVariantConfig cfg, int[] shaderVariantIds)
+    {
         var svc = new ShaderVariantCollection();
 
         int index = 0;
@@ -64,9 +83,9 @@ public class ShaderVariantManager
         foreach (int id in shaderVariantIds)
         {
             int count = id - prevCount;
-            while (count >= mConfig.ShaderVaraints[index].Variants.Length)
+            while (count >= cfg.ShaderVariants[index].Variants.Length)
             {
-                int variantCount = mConfig.ShaderVaraints[index].Variants.Length;
+                int variantCount = cfg.ShaderVariants[index].Variants.Length;
                 count -= variantCount;
                 prevCount += variantCount;
                 ++index;
@@ -74,21 +93,19 @@ public class ShaderVariantManager
             }
 
             if (shader == null)
-                shader = Shader.Find(mConfig.ShaderVaraints[index].ShaderName);
+                shader = Shader.Find(cfg.ShaderVariants[index].ShaderName);
 
-            var variant = mConfig.ShaderVaraints[index].Variants[count];
+            var variant = cfg.ShaderVariants[index].Variants[count];
             var unityVariant = new ShaderVariantCollection.ShaderVariant(shader, variant.PassType, variant.Keywords);
-            if (!Process(ref unityVariant))
-                continue;
-            
-            svc.Add(unityVariant);
+
+            ProcessVariant(svc, unityVariant);
         }
 
         return svc;
     }
 
-    protected virtual bool Process(ref ShaderVariantCollection.ShaderVariant variant)
+    protected virtual void ProcessVariant(ShaderVariantCollection svc, ShaderVariantCollection.ShaderVariant variant)
     {
-        return true;
+        svc.Add(variant);
     }
 }

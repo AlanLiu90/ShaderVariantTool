@@ -157,15 +157,34 @@ public class ShaderVariantRecorder
             switch (mode)
             {
                 case RecordMode.Add:
+                    if (shaderVariants.Count == 0)
+                    {
+                        if (mRecordedShaderVaraints.ContainsKey(key))
+                            throw new ArgumentException("Key is duplicate: " + key, "key");
+
+                        return;
+                    }
+
                     mRecordedShaderVaraints.Add(key, shaderVariants.ToArray());
                     break;
 
                 case RecordMode.Override:
+                    if (shaderVariants.Count == 0)
+                    {
+                        if (mRecordedShaderVaraints.ContainsKey(key))
+                            mRecordedShaderVaraints.Remove(key);
+                        
+                        return;
+                    }
+
                     mRecordedShaderVaraints[key] = shaderVariants.ToArray();
                     break;
 
                 case RecordMode.Merge:
                     {
+                        if (shaderVariants.Count == 0)
+                            return;
+
                         ShaderVariant[] shaderVariantArray;
                         if (mRecordedShaderVaraints.TryGetValue(key, out shaderVariantArray))
                         {
@@ -183,8 +202,6 @@ public class ShaderVariantRecorder
 
                     break;
             }
-
-            
         }
         finally
         {
@@ -192,15 +209,81 @@ public class ShaderVariantRecorder
         }
     }
 
-    public void AddExtra(string key, params ShaderVariant[] shaderVaraints)
+    public void AddExtra(string key, RecordMode mode, params ShaderVariant[] shaderVariants)
     {
-        if (shaderVaraints == null || shaderVaraints.Length == 0)
+        if (shaderVariants == null || shaderVariants.Length == 0)
+        {
+            switch (mode)
+            {
+                case RecordMode.Add:
+                    if (mRecordedShaderVaraints.ContainsKey(key))
+                        throw new ArgumentException("Key is duplicate: " + key, "key");
+
+                    break;
+
+                case RecordMode.Override:
+                    if (mRecordedShaderVaraints.ContainsKey(key))
+                        mRecordedShaderVaraints.Remove(key);
+
+                    break;
+            }
+
             return;
+        }
 
-        for (int i = 0; i < shaderVaraints.Length; ++i)
-            Array.Sort(shaderVaraints[i].keywords);
+        switch (mode)
+        {
+            case RecordMode.Add:
+                mRecordedShaderVaraints.Add(key, shaderVariants);
+                break;
 
-        mRecordedShaderVaraints.Add(key, shaderVaraints);
+            case RecordMode.Override:
+                mRecordedShaderVaraints[key] = shaderVariants;
+                break;
+
+            case RecordMode.Merge:
+                ShaderVariant[] shaderVariantArray;
+                if (mRecordedShaderVaraints.TryGetValue(key, out shaderVariantArray))
+                {
+                    var shaderVariantSet = new HashSet<ShaderVariant>(shaderVariantArray, mEqualityComparer);
+                    foreach (var variant in shaderVariants)
+                        shaderVariantSet.Add(variant);
+
+                    mRecordedShaderVaraints[key] = shaderVariantSet.ToArray();
+                }
+                else
+                {
+                    mRecordedShaderVaraints.Add(key, shaderVariants.ToArray());
+                }
+                break;
+        }
+    }
+
+    public bool Import(string path)
+    {
+        mRecordedShaderVaraints.Clear();
+
+        var cfg = AssetDatabase.LoadAssetAtPath<ShaderVariantConfig>(path);
+        if (cfg == null)
+            return false;
+
+        var shaderVariants = new List<ShaderVariant>();
+        foreach (var shader in cfg.ShaderVariants)
+        {
+            Shader s = Shader.Find(shader.ShaderName);
+
+            foreach (var variant in shader.Variants)
+            {
+                shaderVariants.Add(new ShaderVariant(s, variant.PassType, variant.Keywords));
+            }
+        }
+
+        foreach (var item in cfg.Items)
+        {
+            mRecordedShaderVaraints.Add(item.Key, item.ShaderVariantIds.Select(x => shaderVariants[x]).ToArray());
+        }
+
+        return true;
     }
 
     public void Export(string path)
@@ -244,7 +327,7 @@ public class ShaderVariantRecorder
 
         cfg.Items = items.ToArray();
 
-        var shaderVariantsList = new List<ShaderVariantConfig.ShaderVariants>();
+        var shaderVariantsList = new List<ShaderVariantConfig.ShaderVariantSet>();
         var shaderVariants = new List<ShaderVariantConfig.ShaderVariant>();
         string shaderName = string.Empty;
         foreach (ShaderVariant key in keys)
@@ -252,7 +335,7 @@ public class ShaderVariantRecorder
             if (shaderName != key.shader.name)
             {
                 if (!string.IsNullOrEmpty(shaderName))
-                    shaderVariantsList.Add(new ShaderVariantConfig.ShaderVariants(shaderName, shaderVariants.ToArray()));
+                    shaderVariantsList.Add(new ShaderVariantConfig.ShaderVariantSet(shaderName, shaderVariants.ToArray()));
 
                 shaderName = key.shader.name;
                 shaderVariants.Clear();
@@ -262,9 +345,9 @@ public class ShaderVariantRecorder
         }
 
         if (!string.IsNullOrEmpty(shaderName))
-            shaderVariantsList.Add(new ShaderVariantConfig.ShaderVariants(shaderName, shaderVariants.ToArray()));
+            shaderVariantsList.Add(new ShaderVariantConfig.ShaderVariantSet(shaderName, shaderVariants.ToArray()));
 
-        cfg.ShaderVaraints = shaderVariantsList.ToArray();
+        cfg.ShaderVariants = shaderVariantsList.ToArray();
 
         EditorUtility.SetDirty(cfg);
         AssetDatabase.SaveAssets();

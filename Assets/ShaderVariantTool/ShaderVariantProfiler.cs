@@ -6,6 +6,8 @@ using UnityEngine.SceneManagement;
 
 public class ShaderVariantProfiler : MonoBehaviour 
 {
+    public static ShaderVariantProfiler Instance { get; private set; }
+
     public Color FontColor = Color.white;
     public int FontSize = 25;
     public float LabelHeight = 40;
@@ -16,6 +18,16 @@ public class ShaderVariantProfiler : MonoBehaviour
         "Shader.Parse",
         "CreateGpuProgram"
     };
+
+    private void Awake()
+    {
+        Instance = this;
+    }
+
+    private void OnDestroy()
+    {
+        Instance = null;
+    }
 
     private struct RecorderData
     {

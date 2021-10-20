@@ -12,12 +12,12 @@ public class ShaderVariantConfig : ScriptableObject
     }
 
     [Serializable]
-    public struct ShaderVariants
+    public struct ShaderVariantSet
     {
         public string ShaderName;
         public ShaderVariant[] Variants;
 
-        public ShaderVariants(string shaderName, ShaderVariant[] variants)
+        public ShaderVariantSet(string shaderName, ShaderVariant[] variants)
         {
             ShaderName = shaderName;
             Variants = variants;
@@ -38,5 +38,5 @@ public class ShaderVariantConfig : ScriptableObject
     }
 
     public Item[] Items;
-    public ShaderVariants[] ShaderVaraints;
+    public ShaderVariantSet[] ShaderVariants;
 }
